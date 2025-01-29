@@ -5,13 +5,46 @@ import Config from 'react-native-config';
 import axios from 'axios';
 import image from '../assets/cisco_bg.jpeg';
 
-const DashboardScreen = ({ navigation, route }) => {
+const DashboardScreen = async({ navigation, route }) => {
   const { name } = route.params;
   const [loading, setLoading] = useState(false);
 
-  const handleOpenMeeting = () => {
+  const getAccessToken=async ()=>{
+    let data = {
+      'grant_type': 'refresh_token',
+      'refresh_token': Config.REFRESH_TOKEN,
+      'client_id': Config.CLIENT_ID,
+      'client_secret': Config.CLIENT_SECRET 
+    };
+
+    let config = {
+      method: 'post',
+      url: 'https://webexapis.com/v1/access_token',
+      headers: { 
+        'Content-type': 'application/x-www-form-urlencoded'
+      },
+      data : data
+    };
+
+     return axios.request(config)
+    .then((response) => {
+      var redata = JSON.stringify(response.data);
+      console.log(redata)
+      console.log(response.data.access_token)
+      return response.data.access_token;
+    })
+    .catch((error) => {
+      console.log(error);
+    });
+
+  }
+
+  const handleOpenMeeting = async () => {
     setLoading(true);
-    const accessToken  = Config.ACCESS_TOKEN;
+      // Your code here
+      
+    const accessToken  = await getAccessToken();
+    // setTimeout(async() => {
     console.log("Access token",accessToken)
   const currentDateTime = new Date().toISOString();
   const currentDate = new Date();
@@ -25,7 +58,7 @@ const DashboardScreen = ({ navigation, route }) => {
   console.log("start time",currentDateTime);
   console.log("end time", futureDateTime);
   
-      axios.post(`${Config.WEBEX_URL}/meetings`, payload, { //create a meeting
+      await axios.post(`${Config.WEBEX_URL}/meetings`, payload, { //create a meeting
         headers: {
           'Content-Type': 'application/json',
           'Authorization':`Bearer ${accessToken}`
@@ -94,6 +127,8 @@ const DashboardScreen = ({ navigation, route }) => {
       .catch((error) => {
         console.log("Error creating meeting",error);
       });
+    //   console.log('This is executed after 1 second');
+    // }, 2000);
     
   }
 
