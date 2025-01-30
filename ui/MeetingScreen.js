@@ -5,10 +5,9 @@ import Config from 'react-native-config';
 import { WebView } from 'react-native-webview';
 
 const MeetingScreen = ({navigation , route }) => {
-  const { accessToken,joinLink } = route.params;
+  const { meetingLink } = route.params;
   const [loading, setLoading] = useState(false);
-  console.log("joinLink",joinLink)
-  const meetingUrl = `${Config.SERVER_URL}/?access_token=${accessToken}&destination=${joinLink}&site=client`;
+  const meetingUrl = `${Config.SERVER_URL}/${meetingLink}`;
 
   const handleWebViewNavigationStateChange = (newNavState) => {
     const { url } = newNavState;
