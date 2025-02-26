@@ -6,12 +6,13 @@ import axios from 'axios';
 import image from '../assets/cisco_bg.jpeg';
 import "react-native-get-random-values";
 import { v4 as uuidv4 } from 'uuid';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
-const DashboardScreen = async ({ navigation, route }) => {
+const DashboardScreen =  ({ navigation, route }) => {
   const { name } = route.params;
   const [loading, setLoading] = useState(false);
 
-  const handleOpenMeeting = (language) => {
+  const handleOpenMeeting = async (language) => {
     setLoading(true);
     const guid = uuidv4();
 
