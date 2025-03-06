@@ -1,14 +1,18 @@
 // MeetingScreen.js
-import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, AppState, TouchableOpacity, Text } from 'react-native';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { View, StyleSheet, AppState, TouchableOpacity, Text, BackHandler } from 'react-native';
 import Config from 'react-native-config';
 import { WebView } from 'react-native-webview';
 import BackgroundService from 'react-native-background-actions';
 import { PermissionsAndroid } from 'react-native';
+import { useNavigation as useNavigationContext } from '../context/NavigationContext';
 
 const MeetingScreen = ({navigation, route}) => {
   const { meetingLink } = route.params;
   const [loading, setLoading] = useState(false);
+  const webViewRef = useRef(null);
+  const { navigationDepth, setNavigationDepth } = useNavigationContext();
+  const depthRef = useRef(navigationDepth);  // Add a ref to track depth
   const meetingUrl = `${Config.SERVER_URL}/${meetingLink}`;
   // Background task options
   const options = {
@@ -36,6 +40,12 @@ const MeetingScreen = ({navigation, route}) => {
       }
     });
   };
+
+  // Update ref when navigationDepth changes
+  useEffect(() => {
+    depthRef.current = navigationDepth;
+    console.log('Meeting Screen - Navigation Depth Changed:', navigationDepth);
+  }, [navigationDepth]);
 
   useEffect(() => {
     const requestPermissions = async () => {
@@ -68,12 +78,29 @@ const MeetingScreen = ({navigation, route}) => {
       }
     });
 
+    // Add back handler
+    const backHandler = BackHandler.addEventListener(
+      'hardwareBackPress',
+      handleBackPress
+    );
+
+    // Listen for navigation state changes
+    const unsubscribe = navigation.addListener('state', (e) => {
+      const routes = navigation.getState().routes;
+      const currentIndex = routes.findIndex(r => r.name === 'Meeting');
+      // No need to update depth here, as it's passed as a prop
+    });
+
     // Cleanup
     return () => {
       subscription.remove();
-      BackgroundService.stop();
+      backHandler.remove();
+      if (route.name === 'Meeting' && !navigation.isFocused()) {
+        BackgroundService.stop();
+      }
+      unsubscribe();
     };
-  }, []);
+  }, [navigation, route.name, handleBackPress]);
 
   const handleWebViewNavigationStateChange = (newNavState) => {
     const { url } = newNavState;
@@ -84,13 +111,42 @@ const MeetingScreen = ({navigation, route}) => {
     }
   };
 
+  const handleBackPress = useCallback(() => {
+    const currentDepth = depthRef.current;  // Use ref value
+    console.log('Meeting Back Press - Current Depth:', currentDepth);
+    
+    if (navigation.canGoBack()) {
+      if (currentDepth > 0) {
+        const newDepth = currentDepth - 1;
+        console.log('Meeting Back Press - New Depth:', newDepth);
+        setNavigationDepth(newDepth);
+        navigation.navigate('Next', {
+          name: 'Test User',
+          meetingLink
+        });
+      } else {
+        navigation.goBack();
+      }
+      return true;
+    }
+    return false;
+  }, [navigation, meetingLink, setNavigationDepth]);
+
   const handleNextScreen = () => {
-    navigation.navigate('Next', { name: 'Test User' });
+    const currentDepth = depthRef.current;  // Use ref value
+    const newDepth = currentDepth + 1;
+    console.log('Meeting Next Screen - New Depth:', newDepth);
+    setNavigationDepth(newDepth);
+    navigation.push('Next', { 
+      name: 'Test User',
+      meetingLink
+    });
   };
   
   return (
     <View style={styles.container}>
       <WebView
+        ref={webViewRef}
         source={{ uri: meetingUrl }}
         onNavigationStateChange={handleWebViewNavigationStateChange}
         startInLoadingState
@@ -124,7 +180,7 @@ const styles = StyleSheet.create({
   },
   nextButton: {
     position: 'absolute',
-    top: 20,
+    bottom: 20,
     right: 20,
     backgroundColor: '#0078D7',
     padding: 10,

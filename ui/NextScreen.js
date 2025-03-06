@@ -1,18 +1,64 @@
 // DashboardScreen.js
-import React, { useState } from 'react';
-import { View, StyleSheet, TouchableOpacity, Image, Text, ActivityIndicator, ImageBackground } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, StyleSheet, TouchableOpacity, Image, Text, ActivityIndicator, ImageBackground, BackHandler } from 'react-native';
 import Config from 'react-native-config';
 import axios from 'axios';
 import image from '../assets/cisco_bg.jpeg';
 import "react-native-get-random-values";
 import { v4 as uuidv4 } from 'uuid';
+import { useNavigation as useNavigationContext } from '../context/NavigationContext';
 
 const NextScreen = ({ navigation, route }) => {
-  const { name } = route.params;
-  const [loading, setLoading] = useState(false);
+  const { name, meetingLink } = route.params;
+  const { navigationDepth, setNavigationDepth } = useNavigationContext();
+  const depthRef = useRef(navigationDepth);  // Add a ref to track depth
+
+  useEffect(() => {
+    depthRef.current = navigationDepth;
+    console.log('Next Screen - Navigation Depth Changed:', navigationDepth);
+  }, [navigationDepth]);
+
+  useEffect(() => {
+    const backHandler = BackHandler.addEventListener(
+      'hardwareBackPress',
+      () => {
+        if (navigation.canGoBack()) {
+          const currentDepth = depthRef.current;  // Use ref value
+          const newDepth = currentDepth - 1;
+          console.log('Back Return to Meeting - New Depth:', newDepth);
+          setNavigationDepth(newDepth);
+          navigation.goBack();
+          return true;
+        }
+        return false;
+      }
+    );
+
+    return () => backHandler.remove();
+  }, [navigation]);
+
+  const handleReturnToMeeting = () => {
+    const currentDepth = depthRef.current;  // Use ref value
+    const newDepth = currentDepth + 1;
+    console.log('Next Return to Meeting - New Depth:', newDepth);
+    setNavigationDepth(newDepth);
+    navigation.goBack();
+  };
 
   return (
-    <Text>Hello</Text>
+    <ImageBackground source={image} resizeMode="cover" style={styles.image}>
+      <View style={styles.container}>
+        <View style={styles.box}>
+          <Text style={styles.welcomeText}>Next Screen (Depth: {depthRef.current})</Text>
+          <TouchableOpacity 
+            style={styles.button} 
+            onPress={handleReturnToMeeting}
+          >
+            <Text style={styles.buttonText}>Return to Meeting</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </ImageBackground>
   );
 };
 
